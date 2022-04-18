@@ -52,8 +52,10 @@ class EventbriteWebhookTestSuite(EventTestCase):
     @patch(GOOGLE_CLOUD_PATH['bucket'], apply_google_cloud_bucket_mock())
     @patch(GOOGLE_CLOUD_PATH['blob'], apply_google_cloud_blob_mock())
     @patch(EVENTBRITE_PATH['get'], apply_eventbrite_requests_post_mock())
+    @patch('breathecode.marketing.tasks.add_event_tags_to_student', MagicMock())
     def test_eventbrite_webhook_without_organization(self):
-        """Test /eventbrite/webhook without auth"""
+        from breathecode.marketing.tasks import add_event_tags_to_student
+
         url = reverse_lazy('events:eventbrite_webhook_id', kwargs={'organization_id': 1})
         response = self.client.post(url,
                                     self.data('order.placed', EVENTBRITE_ORDER_URL),
@@ -76,13 +78,16 @@ class EventbriteWebhookTestSuite(EventTestCase):
             'webhook_id': '1234567'
         }])
         self.check_old_breathecode_calls({}, [])
+        self.assertEqual(add_event_tags_to_student.delay.call_args_list, [])
 
     @patch(GOOGLE_CLOUD_PATH['client'], apply_google_cloud_client_mock())
     @patch(GOOGLE_CLOUD_PATH['bucket'], apply_google_cloud_bucket_mock())
     @patch(GOOGLE_CLOUD_PATH['blob'], apply_google_cloud_blob_mock())
     @patch(EVENTBRITE_PATH['get'], apply_eventbrite_requests_post_mock())
+    @patch('breathecode.marketing.tasks.add_event_tags_to_student', MagicMock())
     def test_eventbrite_webhook_without_academy(self):
-        """Test /eventbrite/webhook without auth"""
+        from breathecode.marketing.tasks import add_event_tags_to_student
+
         model = self.generate_models(organization=True)
         url = reverse_lazy('events:eventbrite_webhook_id', kwargs={'organization_id': 1})
         response = self.client.post(url,
@@ -94,25 +99,30 @@ class EventbriteWebhookTestSuite(EventTestCase):
         self.assertEqual(content, b'ok')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(self.all_event_checkin_dict(), [])
-        self.assertEqual(self.all_eventbrite_webhook_dict(), [{
+
+        db = self.bc.database.list_of('events.EventbriteWebhook')
+        self.assertRegex(db[0]['status_text'], r'Exception: Organization not have one Academy\n')
+        self.bc.check.partial_equality(db, [{
             'action': 'order.placed',
             'api_url': 'https://www.eventbriteapi.com/v3/events/1/orders/1/',
             'endpoint_url': 'https://something.io/eventbrite/webhook',
             'id': 1,
             'organization_id': '1',
             'status': 'ERROR',
-            'status_text': 'Organization not have one Academy',
             'user_id': '123456789012',
             'webhook_id': '1234567'
         }])
         self.check_old_breathecode_calls(model, [])
+        self.assertEqual(add_event_tags_to_student.delay.call_args_list, [])
 
     @patch(GOOGLE_CLOUD_PATH['client'], apply_google_cloud_client_mock())
     @patch(GOOGLE_CLOUD_PATH['bucket'], apply_google_cloud_bucket_mock())
     @patch(GOOGLE_CLOUD_PATH['blob'], apply_google_cloud_blob_mock())
     @patch(EVENTBRITE_PATH['get'], apply_eventbrite_requests_post_mock())
+    @patch('breathecode.marketing.tasks.add_event_tags_to_student', MagicMock())
     def test_eventbrite_webhook_without_event(self):
-        """Test /eventbrite/webhook without auth"""
+        from breathecode.marketing.tasks import add_event_tags_to_student
+
         model = self.generate_models(organization=True, academy=True)
         url = reverse_lazy('events:eventbrite_webhook_id', kwargs={'organization_id': 1})
         response = self.client.post(url,
@@ -124,25 +134,30 @@ class EventbriteWebhookTestSuite(EventTestCase):
         self.assertEqual(content, b'ok')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(self.all_event_checkin_dict(), [])
-        self.assertEqual(self.all_eventbrite_webhook_dict(), [{
+
+        db = self.bc.database.list_of('events.EventbriteWebhook')
+        self.assertRegex(db[0]['status_text'], r'Exception: event doesn\'t exist\n')
+        self.bc.check.partial_equality(db, [{
             'action': 'order.placed',
             'api_url': 'https://www.eventbriteapi.com/v3/events/1/orders/1/',
             'endpoint_url': 'https://something.io/eventbrite/webhook',
             'id': 1,
             'organization_id': '1',
             'status': 'ERROR',
-            'status_text': 'event doesn\'t exist',
             'user_id': '123456789012',
-            'webhook_id': '1234567'
+            'webhook_id': '1234567',
         }])
         self.check_old_breathecode_calls(model, [])
+        self.assertEqual(add_event_tags_to_student.delay.call_args_list, [])
 
     @patch(GOOGLE_CLOUD_PATH['client'], apply_google_cloud_client_mock())
     @patch(GOOGLE_CLOUD_PATH['bucket'], apply_google_cloud_bucket_mock())
     @patch(GOOGLE_CLOUD_PATH['blob'], apply_google_cloud_blob_mock())
     @patch(EVENTBRITE_PATH['get'], apply_eventbrite_requests_post_mock())
+    @patch('breathecode.marketing.tasks.add_event_tags_to_student', MagicMock())
     def test_eventbrite_webhook_with_event_without_eventbrite_id(self):
-        """Test /eventbrite/webhook without auth"""
+        from breathecode.marketing.tasks import add_event_tags_to_student
+
         model = self.generate_models(organization=True, academy=True, event=True)
         url = reverse_lazy('events:eventbrite_webhook_id', kwargs={'organization_id': 1})
         response = self.client.post(url,
@@ -154,25 +169,30 @@ class EventbriteWebhookTestSuite(EventTestCase):
         self.assertEqual(content, b'ok')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(self.all_event_checkin_dict(), [])
-        self.assertEqual(self.all_eventbrite_webhook_dict(), [{
+
+        db = self.bc.database.list_of('events.EventbriteWebhook')
+        self.assertRegex(db[0]['status_text'], r'Exception: event doesn\'t exist\n')
+        self.bc.check.partial_equality(db, [{
             'action': 'order.placed',
             'api_url': 'https://www.eventbriteapi.com/v3/events/1/orders/1/',
             'endpoint_url': 'https://something.io/eventbrite/webhook',
             'id': 1,
             'organization_id': '1',
             'status': 'ERROR',
-            'status_text': 'event doesn\'t exist',
             'user_id': '123456789012',
             'webhook_id': '1234567'
         }])
         self.check_old_breathecode_calls(model, [])
+        self.assertEqual(add_event_tags_to_student.delay.call_args_list, [])
 
     @patch(GOOGLE_CLOUD_PATH['client'], apply_google_cloud_client_mock())
     @patch(GOOGLE_CLOUD_PATH['bucket'], apply_google_cloud_bucket_mock())
     @patch(GOOGLE_CLOUD_PATH['blob'], apply_google_cloud_blob_mock())
     @patch(EVENTBRITE_PATH['get'], apply_eventbrite_requests_post_mock())
+    @patch('breathecode.marketing.tasks.add_event_tags_to_student', MagicMock())
     def test_eventbrite_webhook_without_active_campaign_academy(self):
-        """Test /eventbrite/webhook without auth"""
+        from breathecode.marketing.tasks import add_event_tags_to_student
+
         model = self.generate_models(organization=True,
                                      academy=True,
                                      event=True,
@@ -188,14 +208,16 @@ class EventbriteWebhookTestSuite(EventTestCase):
         self.assertEqual(content, b'ok')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        self.assertEqual(self.all_eventbrite_webhook_dict(), [{
+        db = self.bc.database.list_of('events.EventbriteWebhook')
+        self.assertRegex(db[0]['status_text'], r'Exception: ActiveCampaignAcademy doesn\'t exist\n')
+
+        self.bc.check.partial_equality(db, [{
             'action': 'order.placed',
             'api_url': 'https://www.eventbriteapi.com/v3/events/1/orders/1/',
             'endpoint_url': 'https://something.io/eventbrite/webhook',
             'id': 1,
             'organization_id': '1',
             'status': 'ERROR',
-            'status_text': 'ActiveCampaignAcademy doesn\'t exist',
             'user_id': '123456789012',
             'webhook_id': '1234567'
         }])
@@ -209,14 +231,17 @@ class EventbriteWebhookTestSuite(EventTestCase):
             'attended_at': None
         }])
         self.check_old_breathecode_calls(model, [])
+        self.assertEqual(add_event_tags_to_student.delay.call_args_list, [])
 
     @patch(GOOGLE_CLOUD_PATH['client'], apply_google_cloud_client_mock())
     @patch(GOOGLE_CLOUD_PATH['bucket'], apply_google_cloud_bucket_mock())
     @patch(GOOGLE_CLOUD_PATH['blob'], apply_google_cloud_blob_mock())
     @patch(EVENTBRITE_PATH['get'], apply_eventbrite_requests_post_mock())
     @patch(OLD_BREATHECODE_PATH['request'], apply_old_breathecode_requests_request_mock())
+    @patch('breathecode.marketing.tasks.add_event_tags_to_student', MagicMock())
     def test_eventbrite_webhook_without_automation(self):
-        """Test /eventbrite/webhook without auth"""
+        from breathecode.marketing.tasks import add_event_tags_to_student
+
         model = self.generate_models(organization=True,
                                      event=True,
                                      event_kwargs={'eventbrite_id': 1},
@@ -231,14 +256,16 @@ class EventbriteWebhookTestSuite(EventTestCase):
 
         self.assertEqual(content, b'ok')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(self.all_eventbrite_webhook_dict(), [{
+
+        db = self.bc.database.list_of('events.EventbriteWebhook')
+        self.assertRegex(db[0]['status_text'], r'Exception: Automation for order_placed doesn\'t exist\n')
+        self.bc.check.partial_equality(db, [{
             'action': 'order.placed',
             'api_url': 'https://www.eventbriteapi.com/v3/events/1/orders/1/',
             'endpoint_url': 'https://something.io/eventbrite/webhook',
             'id': 1,
             'organization_id': '1',
             'status': 'ERROR',
-            'status_text': 'Automation for order_placed doesn\'t exist',
             'user_id': '123456789012',
             'webhook_id': '1234567'
         }])
@@ -252,14 +279,17 @@ class EventbriteWebhookTestSuite(EventTestCase):
             'attended_at': None
         }])
         self.check_old_breathecode_calls(model, [])
+        self.assertEqual(add_event_tags_to_student.delay.call_args_list, [])
 
     @patch(GOOGLE_CLOUD_PATH['client'], apply_google_cloud_client_mock())
     @patch(GOOGLE_CLOUD_PATH['bucket'], apply_google_cloud_bucket_mock())
     @patch(GOOGLE_CLOUD_PATH['blob'], apply_google_cloud_blob_mock())
     @patch(EVENTBRITE_PATH['get'], apply_eventbrite_requests_post_mock())
     @patch(OLD_BREATHECODE_PATH['request'], apply_old_breathecode_requests_request_mock())
+    @patch('breathecode.marketing.tasks.add_event_tags_to_student', MagicMock())
     def test_eventbrite_webhook_without_lang(self):
-        """Test /eventbrite/webhook without auth"""
+        from breathecode.marketing.tasks import add_event_tags_to_student
+
         model = self.generate_models(
             organization=True,
             event=True,
@@ -291,7 +321,7 @@ class EventbriteWebhookTestSuite(EventTestCase):
             'id': 1,
             'organization_id': '1',
             'status': 'DONE',
-            'status_text': None,
+            'status_text': 'OK',
             'user_id': '123456789012',
             'webhook_id': '1234567'
         }])
@@ -306,14 +336,19 @@ class EventbriteWebhookTestSuite(EventTestCase):
         }])
 
         self.check_old_breathecode_calls(model, ['create_contact', 'contact_automations'])
+        self.assertEqual(add_event_tags_to_student.delay.call_args_list, [
+            call(model.event.id, email=model.user.email),
+        ])
 
     @patch(GOOGLE_CLOUD_PATH['client'], apply_google_cloud_client_mock())
     @patch(GOOGLE_CLOUD_PATH['bucket'], apply_google_cloud_bucket_mock())
     @patch(GOOGLE_CLOUD_PATH['blob'], apply_google_cloud_blob_mock())
     @patch(EVENTBRITE_PATH['get'], apply_eventbrite_requests_post_mock())
     @patch(OLD_BREATHECODE_PATH['request'], apply_old_breathecode_requests_request_mock())
+    @patch('breathecode.marketing.tasks.add_event_tags_to_student', MagicMock())
     def test_eventbrite_webhook(self):
-        """Test /eventbrite/webhook without auth"""
+        from breathecode.marketing.tasks import add_event_tags_to_student
+
         model = self.generate_models(
             organization=True,
             event=True,
@@ -348,7 +383,7 @@ class EventbriteWebhookTestSuite(EventTestCase):
             'id': 1,
             'organization_id': '1',
             'status': 'DONE',
-            'status_text': None,
+            'status_text': 'OK',
             'user_id': '123456789012',
             'webhook_id': '1234567'
         }])
@@ -363,6 +398,9 @@ class EventbriteWebhookTestSuite(EventTestCase):
         }])
 
         self.check_old_breathecode_calls(model, ['create_contact', 'contact_automations'])
+        self.assertEqual(add_event_tags_to_student.delay.call_args_list, [
+            call(model.event.id, email=model.user.email),
+        ])
 
     """
     🔽🔽🔽 event.created
@@ -388,14 +426,16 @@ class EventbriteWebhookTestSuite(EventTestCase):
         self.assertEqual(actions.update_or_create_event.call_args_list,
                          [call(EVENTBRITE_EVENT, model.organization)])
 
-        self.assertEqual(self.all_eventbrite_webhook_dict(), [{
+        db = self.bc.database.list_of('events.EventbriteWebhook')
+        self.assertRegex(db[0]['status_text'], r'Exception: Random error in creating\n')
+
+        self.bc.check.partial_equality(db, [{
             'action': 'event.created',
             'api_url': 'https://www.eventbriteapi.com/v3/events/1/',
             'endpoint_url': 'https://something.io/eventbrite/webhook',
             'id': 1,
             'organization_id': '1',
             'status': 'ERROR',
-            'status_text': 'Random error in creating',
             'user_id': '123456789012',
             'webhook_id': '1234567'
         }])
@@ -456,14 +496,16 @@ class EventbriteWebhookTestSuite(EventTestCase):
         self.assertEqual(actions.update_or_create_event.call_args_list,
                          [call(EVENTBRITE_EVENT, model.organization)])
 
-        self.assertEqual(self.all_eventbrite_webhook_dict(), [{
+        db = self.bc.database.list_of('events.EventbriteWebhook')
+        self.assertRegex(db[0]['status_text'], r'Exception: Random error in creating\n')
+
+        self.bc.check.partial_equality(db, [{
             'action': 'event.updated',
             'api_url': 'https://www.eventbriteapi.com/v3/events/1/',
             'endpoint_url': 'https://something.io/eventbrite/webhook',
             'id': 1,
             'organization_id': '1',
             'status': 'ERROR',
-            'status_text': 'Random error in creating',
             'user_id': '123456789012',
             'webhook_id': '1234567'
         }])
@@ -490,6 +532,79 @@ class EventbriteWebhookTestSuite(EventTestCase):
 
         self.assertEqual(self.all_eventbrite_webhook_dict(), [{
             'action': 'event.updated',
+            'api_url': 'https://www.eventbriteapi.com/v3/events/1/',
+            'endpoint_url': 'https://something.io/eventbrite/webhook',
+            'id': 1,
+            'organization_id': '1',
+            'status': 'DONE',
+            'status_text': 'OK',
+            'user_id': '123456789012',
+            'webhook_id': '1234567'
+        }])
+
+    """
+    🔽🔽🔽 event.published
+    """
+
+    @patch(REQUESTS_PATH['get'],
+           apply_requests_get_mock([(200, eventbrite_url_with_query, EVENTBRITE_EVENT)]))
+    @patch('breathecode.events.actions.publish_event_from_eventbrite',
+           MagicMock(side_effect=Exception('Random error')))
+    def test_eventbrite_webhook__event_published__raise_error(self):
+        from breathecode.events.actions import publish_event_from_eventbrite
+
+        model = self.generate_models(organization=True)
+
+        url = reverse_lazy('events:eventbrite_webhook_id', kwargs={'organization_id': 1})
+        response = self.client.post(url,
+                                    self.data('event.published', eventbrite_url),
+                                    headers=self.headers('event.published'),
+                                    format='json')
+        content = response.content
+
+        self.assertEqual(content, b'ok')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertEqual(publish_event_from_eventbrite.call_args_list,
+                         [call(EVENTBRITE_EVENT, model.organization)])
+
+        db = self.bc.database.list_of('events.EventbriteWebhook')
+        self.assertRegex(db[0]['status_text'], r'Exception: Random error\n')
+
+        self.bc.check.partial_equality(db, [{
+            'action': 'event.published',
+            'api_url': 'https://www.eventbriteapi.com/v3/events/1/',
+            'endpoint_url': 'https://something.io/eventbrite/webhook',
+            'id': 1,
+            'organization_id': '1',
+            'status': 'ERROR',
+            'user_id': '123456789012',
+            'webhook_id': '1234567'
+        }])
+
+    @patch(REQUESTS_PATH['get'],
+           apply_requests_get_mock([(200, eventbrite_url_with_query, EVENTBRITE_EVENT)]))
+    @patch.object(actions, 'publish_event_from_eventbrite', MagicMock())
+    def test_eventbrite_webhook__event_published(self):
+        from breathecode.events.actions import publish_event_from_eventbrite
+
+        model = self.generate_models(organization=True)
+
+        url = reverse_lazy('events:eventbrite_webhook_id', kwargs={'organization_id': 1})
+        response = self.client.post(url,
+                                    self.data('event.published', eventbrite_url),
+                                    headers=self.headers('event.published'),
+                                    format='json')
+        content = response.content
+
+        self.assertEqual(content, b'ok')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertEqual(publish_event_from_eventbrite.call_args_list,
+                         [call(EVENTBRITE_EVENT, model.organization)])
+
+        self.assertEqual(self.all_eventbrite_webhook_dict(), [{
+            'action': 'event.published',
             'api_url': 'https://www.eventbriteapi.com/v3/events/1/',
             'endpoint_url': 'https://something.io/eventbrite/webhook',
             'id': 1,

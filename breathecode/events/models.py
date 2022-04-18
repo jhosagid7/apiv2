@@ -36,7 +36,7 @@ class Organization(models.Model):
     updated_at = models.DateTimeField(auto_now=True, editable=False)
 
     def __str__(self):
-        return f'{self.name} ({self.id})' if self.name else f'({self.id})'
+        return self.name or 'Nameless'
 
 
 class Organizer(models.Model):
@@ -87,10 +87,7 @@ class Venue(models.Model):
     updated_at = models.DateTimeField(auto_now=True, editable=False)
 
     def __str__(self):
-        if self.title is not None:
-            return self.title + '(' + str(self.id) + ')'
-        else:
-            return 'Venue ' + str(self.id)
+        return self.title or 'No title'
 
 
 class EventType(models.Model):
@@ -102,7 +99,7 @@ class EventType(models.Model):
     updated_at = models.DateTimeField(auto_now=True, editable=False)
 
     def __str__(self):
-        return self.name + '(' + str(self.id) + ')'
+        return self.name or 'Nameless'
 
 
 EVENT_STATUS = (
@@ -126,20 +123,29 @@ CURRENCIES = (
 
 
 class Event(models.Model):
+    slug = models.SlugField(max_length=150, blank=True, default=None, null=True)
     description = models.TextField(max_length=2000, blank=True, default=None, null=True)
     excerpt = models.TextField(max_length=500, blank=True, default=None, null=True)
     title = models.CharField(max_length=255, blank=True, default=None, null=True)
     lang = models.CharField(max_length=2, blank=True, default=None, null=True)
     currency = models.CharField(max_length=3, choices=CURRENCIES, default=USD, blank=True)
+    tags = models.CharField(max_length=100, default='', blank=True)
 
-    url = models.URLField(max_length=255)
+    url = models.URLField(
+        max_length=255,
+        null=True,
+        blank=True,
+        default=None,
+        help_text=
+        'URL can be blank if the event will be synched with EventBrite, it will be filled automatically by the API.'
+    )
     banner = models.URLField(max_length=255)
     capacity = models.IntegerField()
 
     starting_at = models.DateTimeField(blank=False)
     ending_at = models.DateTimeField(blank=False)
 
-    host = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='host', blank=True, null=True)
+    host = models.CharField(max_length=100, blank=True, default=None, null=True)
     academy = models.ForeignKey(Academy, on_delete=models.CASCADE, blank=True, null=True)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, blank=True, null=True)
     author = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True)
@@ -173,17 +179,15 @@ class Event(models.Model):
     updated_at = models.DateTimeField(auto_now=True, editable=False)
 
     def __str__(self):
-        if self.title is not None:
-            return self.title + '(' + str(self.id) + ')'
-        else:
-            return 'Event ' + str(self.id)
+        return self.title or 'No title'
 
     def save(self, *args, **kwargs):
         from .signals import event_saved
 
+        created = not self.id
         super().save(*args, **kwargs)
 
-        event_saved.send(instance=self, sender=self.__class__)
+        event_saved.send(instance=self, sender=self.__class__, created=created)
 
 
 PENDING = 'PENDING'
